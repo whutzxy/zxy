@@ -1,0 +1,111 @@
+function J=pwls_piccs(I,P,y,alpha,G,beta,dt,iter)
+
+% Input: I    - 原始稀疏角度图像（可用FBP重建图像） 
+%        P    - 正常剂量先验图像 
+%        y    - 原始稀疏角度投影数据
+%        alpha- 权重，控制先验信息
+%        G    - 系统矩阵
+%        beta - 惩罚因子，控制惩罚项（先验项）
+%        dt  -  步长
+%        iter - 迭代次数     
+%       (default values are in [])
+
+% Output: J  -  重建图像
+
+
+if ~exist('alpha')
+   alpha=0;% CS based on TV without prior image
+end
+if ~exist('iter')
+   iter=10;
+end
+
+
+a=10.^(-8);% a  - data small enough
+[ny,nx]=size(I); 
+
+param.nx = 512;
+param.ny = 512;
+
+%%%%%%%%%%%%%%% 初始化DL参数 %%%%%%%%%%%%%%%%%%%%
+% DLMRI iterations
+    num=1;  % DL算法的迭代次数
+    n=4*4; % Patch的尺寸。字典D的行数。Patch size, i.e., Total # of pixels in square patch (e.g., n=36, n=64)
+    r=1; % Overlap Stride (e.g., r=1); 每个patch之间的距离，默认是1，为加快算法速度，可以调大（即：间隔选取‘块’）
+    K2=32*n; % atom的个数。字典D的列数。一般取n的4倍，8倍。Number of dictionary atoms (e.g., K2=n)
+    N=200*K2; % N: Number of signals used for training (e.g., N=200*K2)
+    op=0; % If set to 1, K-SVD learning is done with fixed sparsity. For any other setting, K-SVD learning is done
+             %  employing both sparsity level and an error threshold (faster). (e.g., op=1)
+    th=2.5*(10^(-5)); %2.5*(10^(-5)); ; %3*(10^(-8));  % 阈值 一般1以下，看噪声情况。Threshold used in sparse representation of patches after training. To use threshold during training, set 
+                     % op appropriately. (e.g., th=0.023)
+    T0=5; % 稀疏度5-10。round((0.15)*n); Sparsity settings of patch (e.g., T0=round((0.15)*n) )
+            
+%DLMRI Parameters initialization
+%T0=DLMRIparams.T0; %sparsity levels
+%numiterKSVD=DLMRIparams.numiterateKSVD; %number of K-SVD iterations
+
+%other parameters of K-SVD algorithm
+param.errorFlag=0;
+param.L=T0; %
+param.K=K2;
+param.numIteration=1; % number of K-SVD iterations
+param.preserveDCAtom=0;
+param.InitializationMethod='GivenMatrix'; param.displayProgress=0;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+smat=zeros(param.nx,param.ny);
+RMSE=zeros(1,iter);
+ for i=1:iter  %% do iterations
+    g=G'*(G*I-y);
+    Gg=(G*g);
+    tau=sum(g(:).^2)/sum(Gg(:).^2);
+    I_f=I(:,[2:nx nx])-I;
+    I_b=I-I(:,[1 1:nx-1]);
+    I_u=I-I([1 1:ny-1],:);
+    I_d=I([2:ny ny],:)-I;
+    I_x_1=I(:,[2:nx nx])-I([1 1:ny-1],[2:nx nx]);
+    I_y_1=I([2:ny ny],:)-I([2:ny ny],[1 1:ny-1]);
+    den1=(a+I_b.^2+I_u.^2).^(0.5);
+    den2=(a+I_f.^2+I_x_1.^2).^(0.5);
+    den3=(a+I_d.^2+I_y_1.^2).^(0.5);
+
+  if ~exist('P')
+    v=(I_b+I_u)./den1-I_f./den2-I_d./den3;
+    norm=(sum(sum(v.^2))).^(0.5);
+    v=v./norm;
+    u=tau*g+beta*dt*v;
+    I=I-u;
+  else
+    Q=I-P;
+    Q_f=Q(:,[2:nx nx])-Q;
+    Q_b=Q-Q(:,[1 1:nx-1]);
+    Q_u=Q-Q([1 1:ny-1],:);
+    Q_d=Q([2:ny ny],:)-Q;
+    Q_x_1=Q(:,[2:nx nx])-Q([1 1:ny-1],[2:nx nx]);
+    Q_y_1=Q([2:ny ny],:)-Q([2:ny ny],[1 1:ny-1]);
+    den4=(a+Q_b.^2+Q_u.^2).^(0.5);
+    den5=(a+Q_f.^2+Q_x_1.^2).^(0.5);
+    den6=(a+Q_d.^2+Q_y_1.^2).^(0.5);
+    v1=(I_b+I_u)./den1-I_f./den2-I_d./den3;
+    v2=(Q_b+Q_u)./den4-Q_f./den5-Q_d./den6;
+    v=alpha*(v2)+(1-alpha)*(v1);
+    norm=(sum(sum(v.^2))).^(0.5);
+    v=v./norm;
+    u=tau*g+beta*dt*v;
+    I=I-u;
+  
+  end
+%    if mod(i,1)==0 %每隔n次进行DL操作///////////////////////////////////////////////
+%          I11=I;
+%          I=DLstep(I11,param,num,n,r,N,op,th,K2);
+%     end
+    str1='E:\ZXY\bags\pwls no\data\PWLS-512x512-'; % 写入重建图像&&&&&&&&&&&&&
+    str2='.dat';
+    filename=[str1,num2str(i),str2];
+%         if mod(i,5)==0 || i==1
+            fid=fopen(filename,'wb');
+            fwrite(fid,I,'float32');
+            fclose(fid);
+%         end   
+  end 
+J=I;
