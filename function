@@ -30,7 +30,7 @@ param.ny = 512;
 %%%%%%%%%%%%%%% 初始化DL参数 %%%%%%%%%%%%%%%%%%%%
 % DLMRI iterations
     num=1;  % DL算法的迭代次数
-    n=4*4; % Patch的尺寸。字典D的行数。Patch size, i.e., Total # of pixels in square patch (e.g., n=36, n=64)
+    n=6*6; % Patch的尺寸。字典D的行数。Patch size, i.e., Total # of pixels in square patch (e.g., n=36, n=64)
     r=1; % Overlap Stride (e.g., r=1); 每个patch之间的距离，默认是1，为加快算法速度，可以调大（即：间隔选取‘块’）
     K2=32*n; % atom的个数。字典D的列数。一般取n的4倍，8倍。Number of dictionary atoms (e.g., K2=n)
     N=200*K2; % N: Number of signals used for training (e.g., N=200*K2)
@@ -95,10 +95,10 @@ RMSE=zeros(1,iter);
     I=I-u;
   
   end
-%    if mod(i,1)==0 %每隔n次进行DL操作///////////////////////////////////////////////
-%          I11=I;
-%          I=DLstep(I11,param,num,n,r,N,op,th,K2);
-%     end
+    if mod(i,1)==0 %每隔n次进行DL操作///////////////////////////////////////////////
+          I11=I;
+          I=DLstep(I11,param,num,n,r,N,op,th,K2);
+     end
     str1='E:\ZXY\bags\pwls no\data\PWLS-512x512-'; % 写入重建图像&&&&&&&&&&&&&
     str2='.dat';
     filename=[str1,num2str(i),str2];
