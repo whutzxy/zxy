@@ -1,15 +1,10 @@
-%%  intialization  设定初值
-
-% fid = fopen('output_zhangh1_atn_1.bin');
 fid = fopen('no_leg_atn_1.bin'); %读入图像数据
 x = fread(fid,inf,'float');
 x=reshape(x,[512,512,100]);
 fclose(fid);
 xtrue=x(:,:,65)*600;
 clim=[63 113];
-% figure,imshow(xtrue',clim);
-% title('true')
-view=180;%25 40 58 80 116  旋转一周采样角个数
+view=180;
 view1=180;
 % 设定投影几何参数sg
 sg = sino_geom('fan','nb', 672, 'na',view, 'ds', 1.40, ...
